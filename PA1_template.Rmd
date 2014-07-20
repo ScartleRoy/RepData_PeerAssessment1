@@ -1,20 +1,118 @@
-# Reproducible Research: Peer Assessment 1
+Reproducible Research: Peer Assessment 1
+===========================================
 
+This is the first assignment for the course Reproducible Research in Coursera.
+I'll follow the requirements and give out the corresponding code and result below.
 
 ## Loading and preprocessing the data
+First, we need to load the data and preprocess it if necessary.
+We use *read.csv* function to load the data.
 
+```{r load, echo = TRUE}
+data <- read.csv("activity.csv")
+data$date <- as.Date(data$date, format = "%Y-%m-%d")
+summary(data)
+```
 
+Here we transform the colome *date* from *factor* to *date*.
 
 ## What is mean total number of steps taken per day?
+```{r ques1.1, echo = TRUE}
+data <- read.csv("activity.csv")
+step.per.day <- aggregate(data$steps, by= list(data$date), sum)
+colnames(step.per.day) <- c("date", "steps")
+barplot(step.per.day$steps, names.arg = step.per.day$date, 
+    main = "Total number of steps taken each day", 
+    xlab = "Steps", ylab = "The number of days")
+```
 
+Then we need to calculate the mean and the median of the steps per day.
 
+```{r ques1.2, echo = TRUE}
+mean(step.per.day$steps, na.rm = T)
+median(step.per.day$steps, na.rm = T)
+```
 
 ## What is the average daily activity pattern?
+First we need to make a time series plot of the of the 5-minute interval and the average number of steps taken, averaged across all days.
 
+```{r ques2.1, echo = TRUE}
+data.interval <- data[complete.cases(data),c(1,3)]
+steps.interval <- aggregate(steps ~ interval, data = data.interval, mean)
+plot(steps.interval, type = "l", xlab = "Intervals", ylab = "Steps")
+```
 
+Then we need to find out the interval which contains the maximum number of steps.
 
+```{r ques2.2, echo = TRUE}
+steps.interval$interval[which.max(steps.interval$steps)]
+```
 ## Imputing missing values
 
+First we need to calculate the the total number of rows with NAs.
 
+```{r ques3.1, echo = TRUE}
+sum(is.na(data))
+```
+
+Then we need to derive a strategy to fill the NAs. 
+As is often used in smoothing data, we will use the mean for the interval to fill the blanks.
+
+```{r ques3.2, echo = TRUE}
+new.data <- merge(data, steps.interval, by = "interval", suffixes = c(".per",".mean"))
+new.data <- new.data[order(new.data$date, new.data$interval),]
+na.index <- is.na(new.data$steps.per)
+new.data$steps.per[na.index] <- new.data$steps.mean[na.index]
+new.data <- new.data[, c(2:4)]
+names(new.data) <- c("steps", "date", "interval")
+head(new.data)
+```
+
+Next we create a histogram and calculate the mean and median as in Question 1.
+
+```{r ques3.3, echo = TRUE}
+step.per.day.new <- aggregate(new.data$steps, by= list(new.data$date), sum)
+colnames(step.per.day.new) <- c("date", "steps")
+barplot(step.per.day.new$steps, names.arg = step.per.day.new$date, 
+    main = "Total number of steps taken each day", 
+    xlab = "Steps", ylab = "The number of days")
+mean(step.per.day.new$steps, na.rm = T)
+median(step.per.day.new$steps, na.rm = T)
+```
+
+We can see that the plot has no blank colomns now, but the mean and median almost stay the same.
+This means that this is an effective way to smooth the data.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+First we need a new colomn in the new data that indicates the weekday of a date.
+We can write a function here in order to use the *sapply* function.
+
+```{r ques4.1.func, echo = TRUE}
+convert_weekday <- function(date) {
+  if(weekdays(as.Date(date)) %in% c("Saturday", "Sunday")) {
+    return("weekend")
+  }
+  else {
+    return("weekday")
+  }
+}
+```
+
+Now we can easily create a new column.
+
+```{r ques4.1.main, echo = TRUE}
+new.data$weekday <- as.factor(sapply(new.data$date, convert_weekday))
+head(new.data,5)
+```
+
+Then we need to make a panel plot containing a time series plot of the 5-minute interval and the average number of steps taken, averaged across all weekday days or weekend days.
+
+```{r ques4.2,echo = TRUE}
+par(mfrow = c(2,1))
+for(days in names(table(new.data$weekday))) {
+  step.interval.mean <- NULL
+  step.interval.mean <- aggregate(steps ~ interval, data = new.data, subset = (new.data$weekday == days), FUN = mean)
+  plot(step.interval.mean, type = "l", xlab = "Intervals", ylab = "Steps", main = days)
+}
+```
