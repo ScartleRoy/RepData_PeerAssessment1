@@ -63,8 +63,8 @@ new.data <- merge(data, steps.interval, by = "interval", suffixes = c(".per",".m
 new.data <- new.data[order(new.data$date, new.data$interval),]
 na.index <- is.na(new.data$steps.per)
 new.data$steps.per[na.index] <- new.data$steps.mean[na.index]
-new.data <- new.data[, c(2:4)]
-names(new.data) <- c("steps", "date", "interval")
+new.data <- new.data[, c(1:3)]
+names(new.data) <- c("interval", "steps", "date")
 head(new.data)
 ```
 
